@@ -1,0 +1,53 @@
+## From an example at http://httpd.apache.org/docs/2.2/vhosts/name-based.html
+
+<VirtualHost *:80>
+  ServerName digital.!!!!04!!!!
+  ServerAdmin digital@!!!!03!!!!
+# ServerAlias !!!!04!!!! *.!!!!04!!!!
+  DocumentRoot /var/www/drupal7
+  <Directory /var/www/drupal7>
+    DirectoryIndex index.php
+    AllowOverride All
+    Order allow,deny
+    Allow from all
+  </Directory>
+</VirtualHost>
+
+## The following per http://v2p2dev.to.cnr.it/doku.php?id=isla2:limage
+## Enable reverse proxy to adore-djatoka
+#
+ProxyRequests Off
+ProxyPreserveHost On
+<Proxy *>
+  AddDefaultCharset off
+  Order deny,allow
+  Allow from all
+</Proxy>
+ProxyPass /adore-djatoka http://!!!!02!!!!.!!!!03!!!!:8080/adore-djatoka
+ProxyPassReverse /adore-djatoka http://!!!!02!!!!.!!!!03!!!!:8080/adore-djatoka
+
+## The following also from the example at
+## http://httpd.apache.org/docs/2.2/vhosts/name-based.html but is currently
+## unused.
+#
+#<VirtualHost *:80>
+#  ServerName www.otherdomain.tld
+#  DocumentRoot /www/otherdomain
+#</VirtualHost>
+#
+## What follows is from the original vagrant_webroot file.
+#
+#<VirtualHost *:80>
+#  ServerName app.local
+## DocumentRoot /vagrant/webroot/drupal7
+#  DocumentRoot /var/www/drupal7
+## <Directory /vagrant/webroot/drupal7>
+#  <Directory /var/www/drupal7>
+#    DirectoryIndex index.php index.html
+#    AllowOverride All
+#    Order allow,deny
+#    Allow from all
+#  </Directory>
+#</VirtualHost>
+
+

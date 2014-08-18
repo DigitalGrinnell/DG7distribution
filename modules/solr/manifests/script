@@ -1,0 +1,115 @@
+@TODO
+# Now following install of SOLR 4.2 at https://github.com/discoverygarden/basic-solr-config/wiki/Guide-to-Setting-up-GSearch-2.7-with-Solr-4.2.0.
+service tomcat stop
+cd /opt
+# wget http://archive.apache.org/dist/lucene/solr/4.2.0/solr-4.2.0.tgz   <-- Moving to 4.2.1 due to errors!
+wget http://archive.apache.org/dist/lucene/solr/4.2.1/solr-4.2.1.tgz
+tar -xvzf solr-4.2.1.tgz
+ln -s /opt/solr-4.2.1 /opt/solr
+nano $FEDORA_HOME/tomcat/conf/Catalina/localhost/solr.xml   ## add the following lines
+#  <?xml version="1.0" encoding="UTF-8"?>
+#  <Context docBase="/opt/solr/dist/solr-4.2.1.war" debug="0" crossContext="true">
+#    <Environment name="solr/home" type="java.lang.String" value="/usr/local/fedora/solr" override="true"/>
+#  </Context>
+mkdir $FEDORA_HOME/solr                          ## <--- Important addition!
+cp -r /opt/solr/example/solr/collection1 $FEDORA_HOME/solr/collection1
+mkdir $FEDORA_HOME/solr/collection1/data         ## <--- Important addition!
+mkdir $FEDORA_HOME/solr/collection1/data/index   ## <--- Important addition!
+cd $FEDORA_HOME/solr
+chown -R fedora:fedora .
+cd $FEDORA_HOME/solr/collection1/conf
+mv -f schema.xml schema.xml.bak
+# Don't do the following!
+# wget https://github.com/discoverygarden/basic-solr-config/blob/modular/conf/schema.xml
+# Just go get a copy of the file instead!
+cd $FEDORA_HOME/solr/collection1/conf
+cp solrconfig.xml solrconfig.xml.bak
+sed -i 's|<openSearcher>false</openSearcher>|<openSearcher>true</openSearcher>|g' solrconfig.xml
+sed -i 's|<queryResultWindowSize>20</queryResultWindowSize>|<queryResultWindowSize>50</queryResultWindowSize>|g' solrconfig.xml
+sed -i 's|<requestDispatcher handleSelect="false" >|<requestDispatcher handleSelect="true" >|g' solrconfig.xml
+sed -i '782i<str name="fl">*</str>' solrconfig.xml
+sed -i '783i<str name="q.alt">*:*</str>' solrconfig.xml
+sed -i '784i<str name="qf">dc.title^5 dc.subject^3 dc.description^3 dc.creator^3 dc.contributor^3 dc.type^1 dc.relation^1 dc.publisher^1 mods_identifier_local_ms^3 ds.WARC_FILTER^1 text_nodes_HOCR_hlt^1 mods_subject_hierarchicalGeographic_region_ms^3 mods_identifier_hdl_mt^3 dc.identifier^3 PID^0.5 catch_all_fields_mt^0.1</str>' solrconfig.xml
+cd /$FEDORA_HOME/solr           ## <--- New!
+chown -R fedora:fedora .        ## <--- New!
+# Note: At this point the SOLR index directory, /usr/local/fedora/solr/collection1/data/index does NOT exist.
+# SOLR documentation says this is OK, SOLR will create it automatically.  We shall see.
+
+# And install of GSearch 2.7
+service tomcat start
+cd $FEDORA_HOME/tomcat/webapps
+wget http://downloads.sourceforge.net/fedora-commons/fedoragsearch-2.7.zip
+unzip fedoragsearch-2.7.zip
+mv -f fedoragsearch-2.7/fedoragsearch.war .
+# Wait 10 seconds for the .war to unpack, then clean-up.
+rm -fr fedoragsearch-2.7*
+cd $FEDORA_HOME/tomcat/webapps/fedoragsearch/FgsConfig
+cp fgsconfig-basic.properties fgsconfig-basic.properties.bak
+nano fgsconfig-basic.properties  ## ensure the following values are present
+# configDisplayName=configDemoOnSolr
+# local.FEDORA_HOME=<path to fedora home>
+# indexEngine=Solr
+# indexDir=${local.FEDORA_HOME}/solr/collection1/data/index
+# indexBase=http://localhost:8080/solr
+# indexingDocXslt=foxmlToSolr
+ant generateIndexingXslt
+ant -f fgsconfig-basic.xml
+# Is this optional?
+apt-get install maven
+# And this... https://github.com/discoverygarden/dgi_gsearch_extensions?
+# Ensure that you have added the DGI GSearch Extensions to GSearch, just follow the directions provided at the preceding link.
+cd /tmp
+wget https://github.com/discoverygarden/dgi_gsearch_extensions/archive/master.zip
+unzip master.zip
+#
+# Back on script...
+cd  $FEDORA_HOME/tomcat/webapps/fedoragsearch/WEB-INF/classes/fgsconfigFinal/index/FgsIndex
+# Don't do the following wget's...they will turn all these files into HTML garbage!
+wget https://github.com/discoverygarden/basic-solr-config/blob/modular/foxmlToSolr.xslt
+wget https://github.com/discoverygarden/basic-solr-config/blob/modular/islandora_transforms/DC_to_solr.xslt
+wget https://github.com/discoverygarden/basic-solr-config/blob/modular/islandora_transforms/EACCPF_to_solr.xslt
+wget https://github.com/discoverygarden/basic-solr-config/blob/modular/islandora_transforms/FOXML_properties_to_solr.xslt
+wget https://github.com/discoverygarden/basic-solr-config/blob/modular/islandora_transforms/MADS_to_solr.xslt
+wget https://github.com/discoverygarden/basic-solr-config/blob/modular/islandora_transforms/MODS_to_solr.xslt
+wget https://github.com/discoverygarden/basic-solr-config/blob/modular/islandora_transforms/RELS-EXT_to_solr.xslt
+wget https://github.com/discoverygarden/basic-solr-config/blob/modular/islandora_transforms/RELS-INT_to_solr.xslt
+wget https://github.com/discoverygarden/basic-solr-config/blob/modular/islandora_transforms/TEI_to_solr.xslt
+wget https://github.com/discoverygarden/basic-solr-config/blob/modular/islandora_transforms/WORKFLOW_to_solr.xslt
+wget https://github.com/discoverygarden/basic-solr-config/blob/modular/islandora_transforms/XML_text_nodes_to_solr.xslt
+wget https://github.com/discoverygarden/basic-solr-config/blob/modular/islandora_transforms/XML_to_one_solr_field.xslt
+wget https://github.com/discoverygarden/basic-solr-config/blob/modular/islandora_transforms/datastream_id_to_solr.xslt
+wget https://github.com/discoverygarden/basic-solr-config/blob/modular/islandora_transforms/manuscript_finding_aid.xslt
+wget https://github.com/discoverygarden/basic-solr-config/blob/modular/islandora_transforms/slurp_all_MODS_to_solr.xslt
+wget https://github.com/discoverygarden/basic-solr-config/blob/modular/islandora_transforms/slurp_all_chemicalML_to_solr.xslt
+wget https://github.com/discoverygarden/basic-solr-config/blob/modular/islandora_transforms/slurp_all_ead_to_solr.xslt
+wget https://github.com/discoverygarden/basic-solr-config/blob/modular/islandora_transforms/text_to_solr.xslt
+nano index.properties   ## uncomment the 'fgsindex.uriResolver    =' at the end of the file
+service tomcat restart
+# OK, but when doing updateIndex I get this again...
+# Fri Jul 25 23:39:55 CDT 2014 IndexReader open error indexName=FgsIndex : ; nested exception is: org.apache.lucene.store.NoSuchDirectoryException: directory '/usr/local/fedora/solr/collection1/data/index' does not exist
+
+
+
+
+
+
+
+
+
+
+
+
+  cp solr-4.9.0/dist/solr-4.9.0.war /usr/local/fedora/tomcat/webapps/solr.war
+  nano $CATALINA_HOME/conf/Catalina/localhost/solr.xml
+    <Context docBase="/opt/solr/solr.war" debug="0" crossContext="true">
+      <Environment name="solr/home" type="java.lang.String" value="/usr/local/fedora/gsearch_solr/solr" override="true" />
+    </Context>
+  cd $FEDORA_HOME
+  mkdir gsearch_solr
+  cd gsearch_solr
+  cp -fr /tmp/solr-4.9.0 solr
+  chown fedora:fedora /usr/local/fedora/tomcat/webapps/solr.war
+  service tomcat restart
+Verify the install by visiting http://!!!!02!!!!.!!!!03!!!!:8080/solr/admin
+
+

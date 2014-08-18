@@ -1,0 +1,195 @@
+#!/bin/bash
+#
+# This is a conglomeration of work by Steve Young, Richard Wincewicz, William Panting, Adam Vessey, Jason MacWilliams, Gervais de Montbrun
+
+# it's a service!
+# chkconfig: 2345 95 15
+# description: Tomcat, with Islandora stack.
+### BEGIN INIT INFO
+# Provides: fedora
+# Required-Start: $all
+# Required-Stop: $all
+# Default-Start: 2 3 4 5
+# Default-Stop: 0 1 6
+# Short-Description: Start tomcat at boot.
+# Description: Start the tomcat servelet container holding Fedora.
+### END INIT INFO
+
+# Source function library.
+if [ -f /etc/init.d/functions ]; then
+     . /etc/init.d/functions
+fi
+
+# Environment variables are set in /etc/profile.d/fedora.sh
+# something like this:
+#export FEDORA_HOME=/usr/local/fedora
+#export CATALINA_HOME=/usr/local/fedora/tomcat
+#export JAVA_OPTS="-Xms1024m -Xmx1024m -XX:MaxPermSize=512m -XX:+CMSClassUnloadingEnabled -Djavax.net.ssl.trustStore=/usr/local/fedora/server/truststore -Djavax.net.ssl.trustStorePassword=tomcat"
+#export JAVA_HOME=/usr/lib/jvm/java-6-oracle/jre
+#export FEDORA_USER=fedora
+
+if [ -f /etc/profile.d/fedora.sh ] ; then
+  . /etc/profile.d/fedora.sh
+fi
+
+#ping mysql (network incase not on this box) with CORRECT creds... to know if it is running wait 5 try 3 fail
+#might be able to minimize security isses by using a dedicated 'ping account'
+# try:
+# /etc/init.d/mysqld status
+# or
+# service mysqld status
+# tested on oracle linux
+
+#****** CHECK FOR ROOT STATUS AND BLOCK IT ******#
+if [ -z "$FEDORA_USER" ]; then
+  ASROOT=0 # a flag to force "run as root"
+  for var in "$@"; do
+    case $var in
+      "-r")
+        ASROOT=1
+        ;;
+    esac
+  done
+
+  # check for root status
+  if [[ $EUID -eq 0 && $ASROOT -eq 0 ]]; then
+    echo "It looks like you're trying to run this script as root"
+    echo "This is not normally allowed, to force it use $0 -r"
+    exit 1
+  fi
+fi
+
+PID_SEARCH="pgrep -nf $FEDORA_HOME.*fedora"
+START_STOP_WAIT=30
+
+run_this_one() {
+  if [ -n "$FEDORA_USER" ]; then
+    #Specify a shell, because the fedora user should not have one in passwd (so as to not let people login as fedora)
+    /bin/su - $FEDORA_USER --shell=/bin/bash --command="$1"
+  else
+    $1
+  fi
+}
+
+start() {
+  if [ `$PID_SEARCH` ]; then
+    echo "Fedora already running! Try running with \"force-start\" if you know for certain it is not running."
+  else
+    force_start
+  fi
+}
+
+force_start() {
+  echo "> Starting..."
+  run_this_one $CATALINA_HOME/bin/startup.sh
+  echo "Waiting for server startup to complete"
+  sleep 2
+  startwait=$START_STOP_WAIT
+  count=0
+  while [ $count -lt $startwait ]; do
+    echo -n "."
+    sleep 1
+    count=`expr $count + 1`
+    PID=`$PID_SEARCH`
+    if [ ! $PID = "" ]; then
+      break
+    fi
+  done
+  ps -p $PID &>/dev/null 2>/dev/null
+    RETVAL=$?
+    if [ $RETVAL = 0 ]; then
+      echo ""
+      echo "Fedora has started..."
+      return 0
+    else
+      echo ""
+      echo "Fedora failed to start... Check your logs"
+      return 1
+    fi
+}
+
+stop()
+{
+  PID=`$PID_SEARCH`
+  if [ $PID ]; then
+    echo "> Stopping..."
+    run_this_one $CATALINA_HOME/bin/shutdown.sh
+    echo "Waiting for server shutdown to complete"
+    sleep 2
+    kwait=$START_STOP_WAIT
+    count=0;
+    while [ $count -lt $kwait ]; do
+      sleep 1
+      count=`expr $count + 1`
+      PID=`$PID_SEARCH`
+      if [ ! $PID = "" ]; then
+        echo -n "."
+      else
+        break
+      fi
+    done
+    echo ""
+    if [ $count -eq $kwait ]; then
+      echo "process is still running after $START_STOP_WAIT seconds, killing process"
+      PID=`$PID_SEARCH`
+      kill $PID
+      sleep 5
+
+      # if it’s still running use kill -9
+      PID=`$PID_SEARCH`
+      if [ $PID ]; then
+      echo "process is still running, using kill -9"
+      kill -9 $PID
+      sleep 5
+      fi
+    fi
+    PID=`$PID_SEARCH`
+    if [ $PID ]; then
+      echo "process is still running, I give up"
+      return 1
+    else
+      echo "Fedora shutdown completed"
+      return 0
+    fi
+  else
+    echo "Fedora is not currently running, you can start it with $0 start"
+  fi
+}
+
+status()
+{
+  PID=`$PID_SEARCH`
+
+  if [ $PID ]; then
+    echo "Fedora is up and running with PID="$PID
+    return 0
+  else
+    echo "Fedora is not currently running, you can start it with 'sudo service tomcat start'"
+    return 1
+  fi
+
+}
+
+deploy()
+{
+  stop
+  start
+  echo "Sleeping for 60 seconds"
+  sleep 60
+  stop
+}
+
+case "$1" in
+  start) start ;;
+  force-start) force_start ;;
+  stop) stop ;;
+  restart) stop ; start ;;
+  status) status ;;
+  deploy) deploy ;;
+  *)
+    echo "Usage: sudo service tomcat {start|stop|status|restart|force-start}"
+    exit 2
+  ;;
+esac
+
+exit $?

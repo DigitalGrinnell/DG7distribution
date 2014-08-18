@@ -1,0 +1,36 @@
+# Install Options
+# Sat Jul 05 11:17:21 CDT 2014
+# Variables should be represented like:  <%= @home_dir %>
+#
+keystore.file=included
+ri.enabled=true
+messaging.enabled=true
+apia.auth.required=false
+database.jdbcDriverClass=com.mysql.jdbc.Driver
+upstream.auth.enabled=false
+tomcat.ssl.port=8443
+ssl.available=true
+database.jdbcURL=jdbc\:mysql\://localhost/<%= @database %>?useUnicode\=true&amp;characterEncoding\=UTF-8&amp;autoReconnect\=true
+messaging.uri=vm\:(broker\:(tcp\://localhost\:61616))
+database.password=<%= @master_password %>
+database.mysql.driver=included
+database.username=<%= @user %>
+fesl.authz.enabled=false
+tomcat.shutdown.port=8005
+deploy.local.services=false
+xacml.enabled=true
+database.mysql.jdbcDriverClass=com.mysql.jdbc.Driver
+tomcat.http.port=8080
+fedora.serverHost=localhost
+database=mysql
+database.driver=included
+fedora.serverContext=fedora
+llstore.type=akubra-fs
+tomcat.home=/usr/local/fedora/tomcat
+database.mysql.jdbcURL=jdbc\:mysql\://localhost/<%= @database %>?useUnicode\=true&amp;characterEncoding\=UTF-8&amp;autoReconnect\=true
+fedora.home=/usr/local/fedora
+install.type=custom
+servlet.engine=included
+apim.ssl.required=false
+fedora.admin.pass=<%= @master_password %>
+apia.ssl.required=false

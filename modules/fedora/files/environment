@@ -1,0 +1,9 @@
+PATH="/usr/bin/java:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/games:/usr/local/games"
+FEDORA_HOME=/usr/local/fedora
+FEDORA_USER=fedora
+CATALINA_HOME=/usr/local/fedora/tomcat
+JAVA_OPTS="-Xms1024m -Xmx1024m -XX:MaxPermSize=512m -Djavax.net.ssl.trustStore=/usr/local/fedora/server/truststore -Djavax.net.ssl.trustStorePassword=tomcat"
+JAVA_HOME=/usr/lib/jvm/java-7-oracle
+JRE_HOME=/usr/lib/jvm/java-7-oracle/jre
+KAKADU_LIBRARY_PATH=/opt/adore-djatoka-1.1/lib/Linux-x86-64
+

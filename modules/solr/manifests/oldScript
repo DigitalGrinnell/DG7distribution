@@ -1,0 +1,151 @@
+# Install and configure SOLR.  Per https://wiki.duraspace.org/display/ISLANDORA713/Installing+Solr+and+GSearch
+# As root...!
+apt-get install unzip
+apt-get install ant
+cd /tmp
+wget http://sourceforge.net/projects/fedora-commons/files/services/3.6/fedoragsearch-2.6.zip
+unzip fedoragsearch-2.6.zip
+cd fedoragsearch-2.6
+cp -v fedoragsearch.war /usr/local/fedora/tomcat/webapps
+cd /tmp
+wget http://apache.osuosl.org/lucene/solr/4.9.0/solr-4.9.0.tgz
+tar -xvzf solr-4.9.0.tgz
+mkdir -p /usr/local/fedora/solr
+cp -Rv solr-4.9.0/example/solr/* /usr/local/fedora/solr
+cp -v solr-4.9.0/dist/solr-4.9.0.war /usr/local/fedora/tomcat/webapps/solr.war
+nano $FEDORA_HOME/server/config/fedora-users.xml
+#   <user name="fgsAdmin" password="[password]">
+#     <attribute name="fedoraRole">
+#       <value>administrator</value>
+#     </attribute>
+#   </user>
+nano $FEDORA_HOME/tomcat/webapps/fedoragsearch/FgsConfig/fgsconfig-basic-for-islandora.properties
+#   See deployed file for values!
+nano $FEDORA_HOME/tomcat/webapps/fedoragsearch/FgsConfig/fgsconfig-basic.xml
+#   Replace 'fgsconfig-basic.properties' with 'fgsconfig-basic-for-islandora.properties' (3 places)
+cd /usr/local/fedora/tomcat/webapps/fedoragsearch/FgsConfig/
+ant -f fgsconfig-basic.xml
+mv -v /usr/local/fedora/solr/collection1/conf/schema.xml $FEDORA_HOME/solr/collection1/conf/schema.bak
+cd /usr/local/fedora/tomcat/webapps/fedoragsearch/WEB-INF
+find . -name schema-4.2.0-for-fgs-2.6.xml   <-- Note the location!
+cd [to location returned above]
+cp -v ./schema-4.2.0-for-fgs-2.6.xml $FEDORA_HOME/solr/collection1/conf/schema.xml
+nano /usr/local/fedora/tomcat/conf/Catalina/localhost/solr.xml
+#   <?xml version="1.0" encoding="UTF-8"?>
+#   <Context docBase="/usr/local/fedora/tomcat/webapps/solr.war" debug="0" crossContext="true">
+#     <Environment name="solr/home" type="java.lang.String" value="/usr/local/fedora/solr" override="true"/>
+#   </Context>
+service tomcat restart
+# !!! SOLR failed to start !!!
+# There are errors in /usr/local/fedora/tomcat/logs/localhost<date>.log indicating
+# that there are SOLR logging problems.
+# Attempting to fix them with recommendation per http://mail-archives.apache.org/mod_mbox/lucene-solr-user/201404.mbox/%3C534EB39A.9060706@gmail.com%3E
+# Found the target jars in... /usr/local/fedora/gsearch_solr/solr/example/lib/ext
+# Found apparent tomcat lib at... /usr/local/fedora/tomcat/lib.
+# !!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+cp /usr/local/fedora/gsearch_solr/solr/example/lib/ext/*.jar  /usr/local/fedora/tomcat/lib
+cp /usr/local/fedora/tomcat/webapps/adore-djatoka/WEB-INF/classes/log4j.properties /usr/local/fedora/tomcat/conf/
+service tomcat restart
+# !!! Still No Good...More Errors than Before !!!
+# Try removing the slf4j logging...whatever the hell that is. 8^(
+rm -f /usr/local/fedora/tomcat/lib/slf4j-*.jar
+service tomcat restart
+# !!! Still No Good... !!!
+
+
+# Giancarlo to the Rescue!?!?!?!
+# https://groups.google.com/forum/#!msg/islandora/81yaTQsq_5s/9n4N_iElbJIJ
+# Remove ALL of the slf4j crap!
+rm -f /usr/local/fedora/tomcat/lib/jcl-over-slf4j-1.7.6.jar
+rm -f /usr/local/fedora/tomcat/lib/jul-to-slf4j-1.7.6.jar
+# !!! Still No Good...But far fewer errors !!!
+# /usr/local/fedora/tomcat/logs/catalina.out still reports...
+#   INFO: Deploying configuration descriptor solr.xml
+#   Jul 25, 2014 7:36:12 PM org.apache.catalina.startup.HostConfig deployDescriptor
+#   WARNING: A docBase /usr/local/fedora/tomcat/webapps/solr.war inside the host appBase has been specified, and will be ignored
+#   Jul 25, 2014 7:36:13 PM org.apache.catalina.core.StandardContext start
+#   SEVERE: Error filterStart
+#   Jul 25, 2014 7:36:13 PM org.apache.catalina.core.StandardContext start
+#   SEVERE: Context [/solr] startup failed due to previous errors
+# And /usr/local/fedora/tomcat/logs/localhost.2014-07-25.log reports...
+#   Jul 25, 2014 7:36:13 PM org.apache.catalina.core.StandardContext filterStart
+#   SEVERE: Exception starting filter SolrRequestFilter
+#   java.lang.NoClassDefFoundError: Failed to initialize Apache Solr: Could not find necessary SLF4j logging jars. If using Jetty, the SLF4j logging jars need to go in the jetty lib/ext directory. For other containers, the corresponding directory should be used. For more information, see: http://wiki.apache.org/solr/SolrLogging
+# Per Giancarlo (above)...
+cd /usr/local/fedora/tomcat/lib
+rm /usr/local/fedora/tomcat/lib/log4j-1.2.16.jar
+wget http://www.slf4j.org/dist/slf4j-1.7.7.zip
+unzip slf4j-1.7.7.zip
+cp slf4j-1.7.7/slf4j-jdk14-1.7.7.jar .
+cp slf4j-1.7.7/log4j-over-slf4j-1.7.7.jar .
+cp /usr/local/fedora/gsearch_solr/solr/example/resources/log4j.properties .
+# The follwing WARNING in catalina.out was a pain...
+# WARNING: A docBase /usr/local/fedora/tomcat/webapps/solr.war inside the host appBase has been specified, and will be ignored
+# So I removed /usr/local/fedora/tomcat/webapps/solr.war and the warning went away!
+rm -f /usr/local/fedora/tomcat/webapps/solr.war
+service tomcat restart
+# !!! Still No Good !!!
+# The following error still appears...
+#   SEVERE: Exception starting filter SolrRequestFilter
+#   java.lang.NoClassDefFoundError: Failed to initialize Apache Solr: Could not find necessary SLF4j logging jars. If using Jetty, the SLF4j logging jars need to go in the jetty lib/ext directory. For other containers, the corresponding directory should be used. For more information, see: http://wiki.apache.org/solr/SolrLogging
+# So, maybe I put the slf4j parts in the wrong /lib???  How about putting them in /usr/local/fedora/tomcat/webapps/fedoragsearch/WEB-INF/lib/?
+cd /usr/local/fedora/tomcat/lib
+rm -f log4j* slf4j*
+cd /usr/local/fedora/tomcat/webapps/fedoragsearch/WEB-INF/lib
+wget http://www.slf4j.org/dist/slf4j-1.7.7.zip
+unzip slf4j-1.7.7.zip
+cp slf4j-1.7.7/slf4j-jdk14-1.7.7.jar .
+cp slf4j-1.7.7/log4j-over-slf4j-1.7.7.jar .
+cp /usr/local/fedora/gsearch_solr/solr/example/resources/log4j.properties .
+# Clean up.
+rm -fr slf4j-1.7.7
+rm -f slf4j-1.7.7.zip
+# Different results now.  Maybe remove the old slf4j libraries?
+rm -f slf4j-*1.5*.jar
+rm -f log4j-over-slf4j-1.5.10.jar
+# Hmmmm, what to do?  So put back the slf4j-1.5.10 parts?
+rm -f *1.7.7*
+cp slf4j-1.5.10/slf4j-jdk14-1.5.10.jar .
+cp slf4j-1.5.10/log4j-over-slf4j-1.5.10.jar .
+# OK, now the /usr/local/fedora/tomcat/logs/localhost.2014-07-25.log is clean!
+# But still nothing from http://!!!!02!!!!.!!!!03!!!!:8080/fedoragsearch/rest  8^(
+# Now there are errors in catalina.out again...
+#   SEVERE: Can't do next doFilter()
+#   dk.defxws.fedoragsearch.server.errors.ConfigException: Fri Jul 25 21:03:22 CDT 2014 *** getFgsConfigProps /fgsconfigFinal/fedoragsearch.properties:
+#   dk.defxws.fedoragsearch.server.errors.ConfigException: Fri Jul 25 21:03:22 CDT 2014 *** getFgsConfigProps /fgsconfigFinal/fedoragsearch.properties not found in classpath
+#         at dk.defxws.fedoragsearch.server.Config.getFgsConfigProps(Config.java:1344)
+# This error leads to more from Giancarlo at http://devbioinfo.to.cnr.it/doku.php?id=repo:fgsearch
+# In response I made changes to the files below per Giancarlo's configuration, and subsequently followed his lead...
+nano /usr/local/fedora/tomcat/webapps/fedoragsearch/FgsConfig/fgsconfig-basic-for-islandora.properties
+nano /usr/local/fedora/tomcat/webapps/fedoragsearch/FgsConfig/FgsConfigReposTemplate/repositoryInfo.xml
+export FEDORA_HOME=/usr/local/fedora
+cd /usr/local/fedora/tomcat/webapps/fedoragsearch/FgsConfig
+ant -f fgsconfig-basic.xml -Dlocal.FEDORA_HOME=$FEDORA_HOME -propertyfile fgsconfig-basic-for-islandora.properties
+cd /usr/local/fedora/solr/collection1/conf
+cp /usr/local/fedora/tomcat/webapps/fedoragsearch/WEB-INF/classes/fgsconfigFinal/index/FgsIndex/conf/schema-4.2.0-for-fgs-2.6.xml ./
+mv schema.xml schema.xml.ORI
+cp schema-4.2.0-for-fgs-2.6.xml schema.xml
+service tomcat restart
+# WOOT!  It works, I think!  Test with http://!!!!02!!!!.!!!!03!!!!:8080/fedoragsearch/rest
+# Let's see if this move breaks anything...
+mv -f /usr/local/fedora/solr/collection1 /usr/local/fedora/solr/islandora
+# That works, I think!
+# Except that updateIndex returns...
+# Fri Jul 25 21:53:10 CDT 2014 IndexReader open error indexName=FgsIndex : ; nested exception is: org.apache.lucene.store.NoSuchDirectoryException: directory '/usr/local/fedora/gsearch/FgsIndex/index' does not exist
+# OK, so it looks like my 'index' directory is actually /usr/local/fedora/solr/islandora/data/index, so...
+nano /usr/local/fedora/tomcat/webapps/fedoragsearch/FgsConfig/fgsconfig-basic-for-islandora.properties
+# And make necessary change to the index directory near the bottom of the file, then repeat several steps from above as follows...
+export FEDORA_HOME=/usr/local/fedora
+cd /usr/local/fedora/tomcat/webapps/fedoragsearch/FgsConfig
+ant -f fgsconfig-basic.xml -Dlocal.FEDORA_HOME=$FEDORA_HOME -propertyfile fgsconfig-basic-for-islandora.properties
+cd /usr/local/fedora/solr/islandora/conf
+cp /usr/local/fedora/tomcat/webapps/fedoragsearch/WEB-INF/classes/fgsconfigFinal/index/FgsIndex/conf/schema-4.2.0-for-fgs-2.6.xml ./
+mv schema.xml schema.xml.ORI_rev2
+cp schema-4.2.0-for-fgs-2.6.xml schema.xml
+service tomcat restart
+# Ok, so we got a different error now...
+# Fri Jul 25 22:17:38 CDT 2014 IndexReader open error indexName=FgsIndex : ; nested exception is: org.apache.lucene.index.IndexFormatTooNewException: Format version is not supported (resource: SimpleFSIndexInput(path="/usr/local/fedora/solr/islandora/data/index/segments.gen")): -3 (needs to be between -2 and -2)
+
+
+
+

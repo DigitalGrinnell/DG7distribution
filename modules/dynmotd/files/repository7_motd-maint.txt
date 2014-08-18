@@ -1,0 +1,14 @@
+Note: 'xxx' in the addresses below may be 'dev' or 'edu'.
+Fedora and Apache Tomcat (Catalina) are key to this server's operation!
+Commands available to help manage these include:
+  sudo service tomcat status|stop|start|restart
+Or consider using the Tomcat manager interface in your browser by visiting:
+  http://!!!!02!!!!.grinnell.xxx:8080/manager and login as fedoraAdmin.
+Test the Fedora repo at http://!!!!02!!!!.grinnell.xxx:8080/fedora
+Test Adore-Djatoka at http://!!!!02!!!!.grinnell.xxx:8080/adore-djatoka
+Look for problems in /usr/local/fedora/tomcat/logs/catalina.out and/or in
+  /usr/local/fedora/server/logs/*.log for both Fedora, FedoraGSearch and Adjore-Djatoka.
+SOLR administration available at http://!!!!02!!!!.grinnell.xxx:8080/solr/#/ and
+  FedoraGSearch REST at http://!!!!02!!!!.grinnell.xxx:8080/fedoragsearch/rest
+For lots of good info check out http://v2p2dev.to.cnr.it/doku.php?id=repo371:base,
+  especially the Fedora fix in the last section!

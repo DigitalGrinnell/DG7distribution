@@ -1,0 +1,2 @@
+This is the initial /etc/motd-maint file.  Enjoy!
+Note: 'xxx' in the addresses below may be 'dev' or 'edu'.

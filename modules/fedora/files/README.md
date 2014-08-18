@@ -1,0 +1,2 @@
+Please note that this Puppet module is written to work with a *LOCAL* copy of **fcrepo-installer-3.7.1.jar**.  To make this module work as intended please download a copy of this .jar file from a source like [http://sourceforge.net/projects/fedora-commons/files/latest/download?source=files](http://sourceforge.net/projects/fedora-commons/files/latest/download?source=files "Fedora Commons at SourceForge") and save it in this *files* folder.
+
